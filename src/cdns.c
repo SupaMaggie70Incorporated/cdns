@@ -1,6 +1,10 @@
+// https://datatracker.ietf.org/doc/html/rfc1034
+// https://datatracker.ietf.org/doc/html/rfc1035
+
 #include "cdns.h"
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/un.h>
@@ -30,6 +34,8 @@ char *cdnsGetErrorString(int error) {
 
 #define UDP_PORT 53
 #define DEFAULT_THREAD_REQUESTS 256
+#define DEFAULT_RESEND_DELAY 1000
+#define DEFAULT_RESEND_ATTEMPTS 10
 
 typedef struct DnsConnections {
     pthread_t* threads;
@@ -43,6 +49,9 @@ typedef struct DnsState {
     int threadRequests;
     int numThreads;
     int maxThreads;
+    int resendDelay;
+    int maxResendCount;
+
     CdnsCallbackDescriptor callback;
     bool listening;
     DnsConnections connections;
@@ -72,6 +81,16 @@ int cdnsCreateDns(CdnsState **out, const CdnsConfig *config) {
         state->threadRequests = config->threadRequests;
     } else {
         state->threadRequests = DEFAULT_THREAD_REQUESTS;
+    }
+    if(config->resendDelayMs != 0) {
+        state->resendDelay = config->resendDelayMs;
+    } else {
+        state->resendDelay = DEFAULT_RESEND_DELAY;
+    }
+    if(config->maxResendCount != 0) {
+        state->maxResendCount = config->maxResendCount;
+    } else {
+        state->maxResendCount = DEFAULT_RESEND_ATTEMPTS;
     }
     state->udpSocket = 0;
     state->tcpSocket = 0;
@@ -136,3 +155,39 @@ int cdnsPause(CdnsState *_state) {
     // TODO
     return 0;
 }
+
+
+
+typedef struct DnsPacketHeader {
+    /// Request/response id
+    u_int16_t id;
+    u_int16_t qr : 1;
+    u_int16_t opcode : 4;
+    u_int16_t aa : 1;
+    u_int16_t tc : 1;
+    u_int16_t rd : 1;
+    u_int16_t ra : 1;
+    u_int16_t z : 3;
+    u_int16_t rcode : 4;
+    /// Question count
+    u_int16_t qdcount;
+    /// Answer count
+    u_int16_t ancount;
+    /// Authority count
+    u_int16_t nscount;
+    /// Additional count
+    u_int16_t arcount;
+} DnsPacketHeader;
+typedef struct DnsQuestion {
+    // TODO: verify that this is variable length
+    char* qname;
+    u_int16_t qtype;
+    u_int16_t qclass;
+} DnsQuestion;
+typedef struct DnsPacket {
+    DnsPacketHeader header;
+    DnsQuestion question;
+    // Answer RRs
+    // Authority RRs
+    // Additional RRs
+} DnsPacket;
