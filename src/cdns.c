@@ -1,5 +1,6 @@
 // https://datatracker.ietf.org/doc/html/rfc1034
 // https://datatracker.ietf.org/doc/html/rfc1035
+// https://www.cloudflare.com/learning/dns/dns-records/
 
 #include "cdns.h"
 #include <string.h>
@@ -9,11 +10,11 @@
 #include <pthread.h>
 #include <sys/un.h>
 
-
-#define NUM_ERR 9
+#define CDNS_ERR_UNDEFINED -1
+#define CDNS_NUM_ERR 10
 
 char *cdnsGetErrorString(int error) {
-    char* strings[NUM_ERR + 1] = {
+    char* strings[CDNS_NUM_ERR + 1] = {
         "NONE",
         "MEMORY ERROR",
         "TCP UNSUPPORTED",
@@ -24,18 +25,22 @@ char *cdnsGetErrorString(int error) {
         "ALREADY LISTENING",
         "INVALID CALLBACK",
         "INVALID PAUSE",
+        "ERROR IN RESPONSE FROM EXTERNAL SERVER"
     };
-    if(error <= NUM_ERR) {
+    if(error <= CDNS_NUM_ERR && error >= 0) {
         return strings[error];
     } else {
         return "UNKNOWN ERROR";
     }
 }
 
-#define UDP_PORT 53
 #define DEFAULT_THREAD_REQUESTS 256
 #define DEFAULT_RESEND_DELAY 1000
 #define DEFAULT_RESEND_ATTEMPTS 10
+
+inline int getProtoTypeIndex(CdnsNetworkProtocolType net, CdnsProtocolType typ) {
+    return (int)net * 3 + (int)typ;
+}
 
 typedef struct DnsConnections {
     pthread_t* threads;
@@ -51,6 +56,8 @@ typedef struct DnsState {
     int maxThreads;
     int resendDelay;
     int maxResendCount;
+
+    int requestMakers[6];
 
     CdnsCallbackDescriptor callback;
     bool listening;
@@ -75,7 +82,7 @@ int cdnsCreateDns(CdnsState **out, const CdnsConfig *config) {
     if(config->udpPort != 0) {
         state->udpPort = config->udpPort;
     } else {
-        state->udpPort = UDP_PORT;
+        state->udpPort = CDNS_PORT;
     }
     if(config->threadRequests != 0) {
         state->threadRequests = config->threadRequests;
@@ -99,6 +106,8 @@ int cdnsCreateDns(CdnsState **out, const CdnsConfig *config) {
     memset(&state->callback, 0, sizeof(CdnsCallbackDescriptor));
     state->listening = false;
     memset(&state->connections, 0, sizeof(DnsConnections));
+
+    memset(state->requestMakers, 0, sizeof(DnsState) * 6); // Set these all to be uncreated
 
     *out = (CdnsState*)state;
     
@@ -156,38 +165,6 @@ int cdnsPause(CdnsState *_state) {
     return 0;
 }
 
-
-
-typedef struct DnsPacketHeader {
-    /// Request/response id
-    u_int16_t id;
-    u_int16_t qr : 1;
-    u_int16_t opcode : 4;
-    u_int16_t aa : 1;
-    u_int16_t tc : 1;
-    u_int16_t rd : 1;
-    u_int16_t ra : 1;
-    u_int16_t z : 3;
-    u_int16_t rcode : 4;
-    /// Question count
-    u_int16_t qdcount;
-    /// Answer count
-    u_int16_t ancount;
-    /// Authority count
-    u_int16_t nscount;
-    /// Additional count
-    u_int16_t arcount;
-} DnsPacketHeader;
-typedef struct DnsQuestion {
-    // TODO: verify that this is variable length
-    char* qname;
-    u_int16_t qtype;
-    u_int16_t qclass;
-} DnsQuestion;
-typedef struct DnsPacket {
-    DnsPacketHeader header;
-    DnsQuestion question;
-    // Answer RRs
-    // Authority RRs
-    // Additional RRs
-} DnsPacket;
+int cdnsGetResponseReadInfo(CdnsResponseContext *context, CdnsRequestId id, CdnsPacketReadInfo **out) {
+    return CDNS_ERR_UNDEFINED;
+}

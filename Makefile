@@ -8,6 +8,8 @@ doc:
 	doxygen
 run-basic: basic
 	build/cdns-basic
+lint: src/basic.c src/cdns.c src/cdns.h
+	cpplint src/basic.c src/cdns.c src/cdns.h
 
 clean:
 	rm -rf build
