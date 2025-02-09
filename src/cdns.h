@@ -30,6 +30,9 @@ typedef struct CdnsState CdnsState;
 typedef struct CdnsResponseContext CdnsResponseContext;
 /// On what condition the callback is exiting
 typedef enum CdnsCallbackCycleStatus {
+  /// The response should be considered to have not even run. You probably
+  /// shouldn't use this
+  NotRun,
   /// The response can be considered complete(even if it was terminated)
   CdnsReturned,
   /// Some time should be waited before attempting to respond again
@@ -76,6 +79,9 @@ typedef struct CdnsConfig {
   unsigned int maxThreads;
   /// Defaults to 256. Maximum requests handled by a single thread concurrently.
   unsigned int threadRequests;
+  /// Defaults to zero. The maximum number of outgoing DNS
+  /// requests(useful for a proxy/redirecting DNS) that can be active at once
+  unsigned int threadOutgoingRequests;
   /// Defaults to 1000. Amount of time to wait after sending a request to
   /// resend.
   unsigned int resendDelayMs;
@@ -336,5 +342,6 @@ inline u_int64_t cdnsToLittleEndianArbitrary(u_int64_t value, int numBits) {
 #define CDNS_ERR_INVALID_CALLBACK 8
 #define CDNS_ERR_INVALID_PAUSE 9
 #define CDNS_ERR_REQ_SERVER 10
+#define CDNS_ERR_MODIFY_WHILE_RUNNING 11
 
 #endif
