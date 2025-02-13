@@ -51,6 +51,22 @@ typedef struct CdnsCallbackCycleInfo {
   CdnsCallbackCycleData data;
 } CdnsCallbackCycleInfo;
 
+typedef enum CdnsNetworkProtocolType {
+  CdnsNetProtoInet4,
+  CdnsNetProtoInet6
+} CdnsNetworkProtocolType;
+typedef enum CdnsProtocolType {
+  CdnsProtoUdp,
+  CdnsProtoTcp,
+  CdnsProtoHttp
+} CdnsProtocolType;
+typedef struct CdnsRequestDestination {
+  CdnsNetworkProtocolType netProtocol;
+  CdnsProtocolType protocol;
+  u_int64_t address;
+  u_int16_t port;
+} CdnsRequestDestination;
+
 /// Returns whether the current callback cycle can be completed.
 ///
 /// Parameters: context, data pointer, whether this is the first call for a
@@ -65,13 +81,24 @@ typedef struct CdnsCallbackDescriptor {
   CdnsCallback callback;
 } CdnsCallbackDescriptor;
 
+typedef struct CdnsListenerConfig {
+  /// Port of the listener, in host byte order. If zero, will default to 53 for
+  /// UDP/TCP or 80 for HTTP
+  u_int16_t port;
+  /// Address of the listener, in network byte order. If set to 255.255.255.255
+  /// or the IPv6 equivalent, will default to what is associated with the
+  /// host name.
+  char addr[16];
+  /// The network type(IPv4 or IPv6)
+  CdnsNetworkProtocolType netProto;
+  /// The carrier protocol type(UDP, TCP, or HTTP(also over TCP))
+  CdnsProtocolType proto;
+} CdnsListenerConfig;
 typedef struct CdnsConfig {
-  /// Defaults to 53
-  u_int16_t udpPort;
-  /// Defaults to no TCP support
-  u_int16_t tcpPort;
-  /// Defaults to no HTTP support
-  u_int16_t httpPort;
+  /// The number of listeners to create
+  int numListeners;
+  /// A pointer to a list of listener configs
+  CdnsListenerConfig *listeners;
   /// Defaults to 1 thread
   unsigned int initialThreads;
   /// Defaults to 1 thread. If this is higher than initialThreads, then new
@@ -234,22 +261,6 @@ typedef struct CdnsPacketReadInfo {
 typedef struct CdnsResponseWriteinfo CdnsResponseWriteinfo;
 typedef struct CdnsRequestWriteInfo CdnsRequestWriteInfo;
 
-typedef enum CdnsNetworkProtocolType {
-  CdnsNetProtoInet4,
-  CdnsNetProtoInet6
-} CdnsNetworkProtocolType;
-typedef enum CdnsProtocolType {
-  CdnsProtoUdp,
-  CdnsProtoTcp,
-  CdnsProtoHttp
-} CdnsProtocolType;
-typedef struct CdnsRequestDestination {
-  CdnsNetworkProtocolType netProtocol;
-  CdnsProtocolType protocol;
-  u_int64_t address;
-  u_int16_t port;
-} CdnsRequestDestination;
-
 /// Creates a DNS instance
 int cdnsCreateDns(CdnsState **state, const CdnsConfig *config);
 /// Sets the callback for a DNS instance. Must be called before cdnsPoll
@@ -322,6 +333,10 @@ inline u_int64_t cdnsToLittleEndianArbitrary(u_int64_t value, int numBits) {
 #endif
 }
 
+#define CDNS_DNS_UDP_PORT 53
+#define CDNS_DNS_TCP_PORT 53
+#define CDNS_DNS_HTTP_PORT 80
+
 #define CDNS_CHECK_ERROR(VALUE)                                                \
   {                                                                            \
     int value = VALUE;                                                         \
@@ -343,5 +358,6 @@ inline u_int64_t cdnsToLittleEndianArbitrary(u_int64_t value, int numBits) {
 #define CDNS_ERR_INVALID_PAUSE 9
 #define CDNS_ERR_REQ_SERVER 10
 #define CDNS_ERR_MODIFY_WHILE_RUNNING 11
+#define CDNS_ERR_NONBLOCKING_UNSUPPORTED
 
 #endif

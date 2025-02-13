@@ -58,8 +58,17 @@ CdnsCallbackCycleInfo callback(CdnsResponseContext* context, void* data, bool fi
 int main(int argc, char** argv) {
     printf("Hello, world!\n");
     CdnsState* state;
+    CdnsListenerConfig configs[1] = {
+        {
+            .addr = 0,
+            .netProto = CdnsNetProtoInet4,
+            .proto = CdnsProtoUdp,
+            .port = CDNS_DNS_UDP_PORT,
+        }
+    };
     CdnsConfig config = {
-
+        .numListeners = 1,
+        .listeners = configs,
     };
     CDNS_CHECK_ERROR(cdnsCreateDns(&state, &config));
     CdnsCallbackDescriptor callbackConfig = {
