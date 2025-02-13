@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: create build directory
+      run: rm -rf build && mkdir build
     - name: make lib
       run: make lib
     - name: make basic
