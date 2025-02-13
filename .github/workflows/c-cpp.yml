@@ -14,12 +14,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: create build directory
-      run: rm -rf build && mkdir build
+      run: mkdir -p build
     - name: make lib
       run: make lib
-    - name: make basic
-      run: make basic
     - name: install doxygen
       run: sudo apt-get update && sudo apt-get install -y doxygen
     - name: make doc
       run: make doc
+    - name: make basic
+      run: make basic
